@@ -8,9 +8,10 @@ datasource db {
 }
 
 model Offer {
-  id          Int    @id @default(autoincrement())
-  title       String
-  price       Int
-  url         String
-  description String
+  id     Int    @id @default(autoincrement())
+  title  String
+  price  Int
+  url    String
+  milage Int?
+  year   Int
 }
