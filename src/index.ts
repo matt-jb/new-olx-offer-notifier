@@ -24,7 +24,7 @@ app.get("/", async (_, res) => {
 });
 
 app.post("/get-offers", async (req, res) => {
-  if (req.headers["authorization"] !== process.env.QUERY_SECRET) {
+  if (req.query["qs"] !== process.env.QUERY_SECRET) {
     return res.status(401).send({ message: "Unauthorized" });
   }
 
