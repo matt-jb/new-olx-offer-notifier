@@ -4,6 +4,7 @@ import axios from "axios";
 import nodemailer from "nodemailer";
 const app = express();
 const port = process.env.PORT || 3000;
+
 app.use(express.json());
 const prisma = new PrismaClient();
 
@@ -22,7 +23,11 @@ app.get("/", async (_, res) => {
   });
 });
 
-app.get("/get-offers", async (_, res) => {
+app.get("/get-offers", async (req, res) => {
+  if (req.headers["x-query-secret"] !== process.env.QUERY_SECRET) {
+    return res.status(401).send({ message: "Unauthorized" });
+  }
+
   const offersInDb = await prisma.offer.findMany();
   const olxOffers = await getOffersFromOlx();
 
@@ -58,19 +63,16 @@ app.get("/get-offers", async (_, res) => {
       data: offers,
     });
 
-    const email = await sendEmail(offers);
-    // TODO: email error handling
-
-    res.send({
-      newOffers: offersToSave.length,
-      message: "New offers added successfully",
-      status: "ok",
+    await sendEmail(offers).catch((err) => {
+      console.error(`Error sending email: ${err}`);
     });
   }
 
-  res.send({
-    newOffers: 0,
-    message: "No new offers at this moment",
+  res.json({
+    newOffers: offersToSave.length ? offersToSave.length : 0,
+    message: offersToSave.length
+      ? `${offersToSave.length} offers added to the database`
+      : "No new offers at this moment",
     status: "ok",
   });
 });
@@ -78,7 +80,7 @@ app.get("/get-offers", async (_, res) => {
 async function getOffersFromOlx() {
   const offers = await axios
     .get(
-      `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=renault%20espace&category_id=84&region_id=2&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2015&filter_refiners=spell_checker`
+      `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=renault%20espace&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2015&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`
     )
     .catch((err) => {
       console.error(err);
