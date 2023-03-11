@@ -1,4 +1,4 @@
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import axios from "axios";
 import nodemailer from "nodemailer";
@@ -17,19 +17,30 @@ interface Offer {
   milage: number;
 }
 
-app.get("/", async (_, res) => {
-  res.send({
-    message: "Hello World!",
-  });
-});
-
-app.post("/get-offers", async (req, res) => {
+const handleAuth = (req: Request, res: Response, next: NextFunction) => {
   if (req.query["qs"] !== process.env.QUERY_SECRET) {
     return res.status(401).send({ message: "Unauthorized" });
   }
+  next();
+};
 
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
+app.post("/get-offers", handleAuth, async (req, res) => {
+  const response = await handleQuery(renaultEspaceQueryString);
+  res.json(response);
+});
+
+app.post("/get-offers/peugeot-5008", handleAuth, async (req, res) => {
+  const response = await handleQuery(peugeot5008QueryString);
+  res.json(response);
+});
+
+async function handleQuery(queryString: string) {
   const offersInDb = await prisma.offer.findMany();
-  const olxOffers = await getOffersFromOlx();
+  const olxOffers = await getOffersFromOlx(queryString);
 
   const offersToSave = olxOffers?.data?.filter((offer: Offer) => {
     const offerInDb = offersInDb.find((offerInDb) => {
@@ -68,23 +79,22 @@ app.post("/get-offers", async (req, res) => {
     });
   }
 
-  res.json({
+  const response = {
     newOffers: offersToSave.length ? offersToSave.length : 0,
     message: offersToSave.length
       ? `${offersToSave.length} offers added to the database`
       : "No new offers at this moment",
     status: "ok",
-  });
-});
+  };
 
-async function getOffersFromOlx() {
-  const offers = await axios
-    .get(
-      `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=renault%20espace&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2015&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`
-    )
-    .catch((err) => {
-      console.error(err);
-    });
+  console.log(response);
+  return response;
+}
+
+async function getOffersFromOlx(queryString: string) {
+  const offers = await axios.get(queryString).catch((err) => {
+    console.error(err);
+  });
 
   if (!offers || offers.status !== 200) return [];
   return offers.data;
@@ -123,6 +133,9 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+const renaultEspaceQueryString = `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=renault%20espace&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2015&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`;
+const peugeot5008QueryString = `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=peugeot%205008&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2017&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`;
 
 app.listen(port, () => {
   console.log(`App listening at port: ${port}`);
