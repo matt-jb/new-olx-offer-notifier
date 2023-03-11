@@ -17,12 +17,12 @@ interface Offer {
   milage: number;
 }
 
-const handleAuth = (req: Request, res: Response, next: NextFunction) => {
+function handleAuth(req: Request, res: Response, next: NextFunction) {
   if (req.query["qs"] !== process.env.QUERY_SECRET) {
     return res.status(401).send({ message: "Unauthorized" });
   }
   next();
-};
+}
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
