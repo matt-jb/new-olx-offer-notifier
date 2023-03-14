@@ -28,13 +28,18 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
-app.post("/get-offers", handleAuth, async (req, res) => {
-  const response = await handleQuery(renaultEspaceQueryString);
-  res.json(response);
-});
+app.post("/get-offers", handleAuth, async (_, res) => {
+  const renaultEspace = await handleQuery(renaultEspaceQueryString);
+  const peugeot5008Petrol = await handleQuery(peugeot5008QueryString);
+  const peugeot5008Diesel = await handleQuery(peugeot5008DieselQueryString);
 
-app.post("/get-offers/peugeot-5008", handleAuth, async (req, res) => {
-  const response = await handleQuery(peugeot5008QueryString);
+  const response = {
+    renaultEspace,
+    peugeot5008Petrol,
+    peugeot5008Diesel,
+  };
+
+  console.log(response);
   res.json(response);
 });
 
@@ -87,7 +92,6 @@ async function handleQuery(queryString: string) {
     status: "ok",
   };
 
-  console.log(response);
   return response;
 }
 
@@ -136,6 +140,7 @@ const transporter = nodemailer.createTransport({
 
 const renaultEspaceQueryString = `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=renault%20espace&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2015&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`;
 const peugeot5008QueryString = `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=peugeot%205008&category_id=84&sort_by=created_at%3Adesc&filter_float_price%3Ato=80000&filter_float_year%3Afrom=2017&filter_refiners=spell_checker&filter_enum_petrol%5B0%5D=petrol`;
+const peugeot5008DieselQueryString = `https://www.olx.pl/api/v1/offers/?offset=0&limit=50&query=peugeot%205008&category_id=84&filter_enum_petrol%5B0%5D=diesel&filter_float_enginepower%3Afrom=160&filter_float_enginepower%3Ato=210&filter_float_enginesize%3Afrom=1800&filter_float_enginesize%3Ato=2100&filter_float_price%3Ato=85000&filter_float_year%3Afrom=2017&filter_refiners=spell_checker&facets=%5B%7B%22field%22%3A%22region%22%2C%22fetchLabel%22%3Atrue%2C%22fetchUrl%22%3Atrue%2C%22limit%22%3A30%7D%2C%7B%22field%22%3A%22category_without_exclusions%22%2C%22fetchLabel%22%3Atrue%2C%22fetchUrl%22%3Atrue%2C%22limit%22%3A10%7D%5D`;
 
 app.listen(port, () => {
   console.log(`App listening at port: ${port}`);
